@@ -37,7 +37,7 @@ Windows:
      * `bracket`: which bracket should be used for gathering statistics (from "HERALD" to "IMMORTAL").
      * `pickrate_threshold`: the minimum percentage of matches a hero needs to be picked in a role for them to be included in that role.
      * `meta_heroes_count`: how many meta heroes will be considered, it also determines how many hero suggestions for each role are given.
-     * `include_heroes`: a list of heroes to be included for each position. These heroes override the meta heroes with lowest win rate. If the hero count is higher than `meta_heroes_count`, only the first respective amount will be used.
+     * `include_heroes`: a list of heroes to be included for each position. These heroes override the meta heroes with lowest win rate. If the hero count is higher than `meta_heroes_count`, only the first respective amount will be used. Note that you need to use code names for heroes, you can obtain corresponding hero names in CLI using `h` command.
 
 * Run:
   * `$ python main.py` (initial load can take a minute because meta hero statistics are pulled first, which takes a while)

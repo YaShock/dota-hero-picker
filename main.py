@@ -11,6 +11,37 @@ import detection
 from misc import Error
 
 
+def get_hero_names(heroes):
+    SHORTER_NAMES = {
+        'Outworld Destroyer': 'Outworld D',
+        'Ancient Apparition': 'Ancient A',
+        'Vengeful Spirit': 'Vengeful S',
+        'Centaur Warrunner': 'Centaur W'
+    }
+
+    hero_names = {}
+    for hero in heroes['constants']['heroes']:
+        hero_names[hero['id']] = hero['displayName']
+        if hero_names[hero['id']] in SHORTER_NAMES:
+            hero_names[hero['id']] = SHORTER_NAMES[hero_names[hero['id']]]
+    return hero_names
+
+
+def get_hero_ids_from_names(config, heroes, hero_count):
+    include_ids = [[], [], [], [], []]
+    for pos in range(0, 5):
+        incl = config['stats']['include_heroes'][f'pos_{pos + 1}']
+        if len(incl) > hero_count:
+            print(f'More heroes for pos {pos + 1} than selected meta hero count, skipping some')
+        for hero_name in incl:
+            # find id
+            for hero_data in heroes['constants']['heroes']:
+                if hero_data['shortName'] == hero_name:
+                    include_ids[pos].append(hero_data['id'])
+                    break
+    return include_ids
+
+
 def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups):
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
@@ -63,20 +94,9 @@ async def main():
 
     assets.get_hero_assets('images')
 
-    SHORTER_NAMES = {
-        'Outworld Destroyer': 'Outworld D',
-        'Ancient Apparition': 'Ancient A',
-        'Vengeful Spirit': 'Vengeful S',
-        'Centaur Warrunner': 'Centaur W'
-    }
-
     # Get meta heroes for each role
     heroes = await queries.run_query(queries.make_hero_info_query(), stratz_token)
-    hero_names = {}
-    for hero in heroes['constants']['heroes']:
-        hero_names[hero['id']] = hero['displayName']
-        if hero_names[hero['id']] in SHORTER_NAMES:
-            hero_names[hero['id']] = SHORTER_NAMES[hero_names[hero['id']]]
+    hero_names = get_hero_names(heroes)
 
     pos_win_rates = []
     for pos in range(0, 5):
@@ -88,19 +108,9 @@ async def main():
     ui.print_meta_heroes(pos_heroes, hero_names, hero_count)
 
     # Replace worst meta picks with custom picks
-    include_ids = [[], [], [], [], []]
-    for pos in range(0, 5):
-        incl = config['stats']['include_heroes'][f'pos_{pos + 1}']
-        if len(incl) > hero_count:
-            print(f'More heroes for pos {pos + 1} than selected meta hero count, skipping some')
-        for hero_name in incl:
-            # find id
-            for hero_data in heroes['constants']['heroes']:
-                if hero_data['shortName'] == hero_name:
-                    include_ids[pos].append(hero_data['id'])
-                    break
-
+    include_ids = get_hero_ids_from_names(config, heroes, hero_count)
     pos_heroes = stats.include_heroes(pos_heroes, include_ids, hero_count, pos_win_rates)
+    print()
     print('Meta + custom picks')
     ui.print_meta_heroes(pos_heroes, hero_names, hero_count)
 
