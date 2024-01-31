@@ -1,0 +1,26 @@
+{
+    "stratz": {
+        "token": "YOUR-TOKEN",
+        "cache_meta": false
+    },
+    "image": {
+        "monitor_number": 1,
+        "screenshot": "live",
+        "roi_method": "predefined"
+    },
+    "steam": {
+        "user": "USERNAME"
+    },
+    "stats": {
+        "bracket": "IMMORTAL",
+        "pickrate_threshold": 0.15,
+        "meta_heroes_count": 15,
+        "include_heroes": {
+            "pos_1": ["juggernaut", "luna"],
+            "pos_2": ["puck", "queenofpain", "obsidian_destroyer", "ember_spirit"],
+            "pos_3": ["axe", "pudge", "shredder"],
+            "pos_4": [],
+            "pos_5": []
+        }
+    }
+}
