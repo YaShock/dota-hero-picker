@@ -1,0 +1,8 @@
+/py
+/build
+/.vscode
+/py32
+/__pycache__
+/.venv
+/generated
+/images

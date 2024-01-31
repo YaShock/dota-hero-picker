@@ -1,0 +1,5 @@
+aiohttp
+mss
+opencv-python
+requests
+matplotlib
