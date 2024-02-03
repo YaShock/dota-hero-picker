@@ -16,7 +16,8 @@ def get_hero_names(heroes):
         'Outworld Destroyer': 'Outworld D',
         'Ancient Apparition': 'Ancient A',
         'Vengeful Spirit': 'Vengeful S',
-        'Centaur Warrunner': 'Centaur W'
+        'Centaur Warrunner': 'Centaur W',
+        "Nature's Prophet": "Nature's P"
     }
 
     hero_names = {}
@@ -42,7 +43,7 @@ def get_hero_ids_from_names(config, heroes, hero_count):
     return include_ids
 
 
-def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups):
+def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
     screenshot_path = config['image']['screenshot']
@@ -60,10 +61,10 @@ def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups)
     print('Detected dire: ', [hero_names[hero] for hero in dire_heroes])
 
     best_picks = stats.get_best_pick_by_pos(pos_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant)
-    ui.print_best_picks(hero_names, best_picks)
+    ui.print_best_picks(hero_names, best_picks, player_wrs)
 
 
-def cli(config, heroes, pos_heroes, hero_names, meta_matchups):
+def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
     print('Type r (radiant), d (dire) to analyze picks, t (test) to test detection, h (heroes) to display hero details, or q (quit) to exit.')
     command = None
     while command != 'q':
@@ -73,12 +74,21 @@ def cli(config, heroes, pos_heroes, hero_names, meta_matchups):
             is_radiant = command == 'r'
             side = 'radiant' if is_radiant else 'dire'
             print(f'Picking for {side}')
-            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups)
+            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
         elif command == 't':
             cfg_im = config['image']
             detection.test_detection(cfg_im['monitor_number'], cfg_im['screenshot'], cfg_im['roi_method'])
         elif command == 'h':
             ui.print_hero_data(heroes)
+
+
+async def get_player_winrates(player_id, all_hero_count, stratz_token):
+    wrs = {}
+    if player_id != None:
+        data = await queries.run_query(queries.make_player_winrates_query(player_id, all_hero_count), stratz_token)
+        for hero in data['player']['heroesPerformance']:
+            wrs[hero['heroId']] = hero
+    return wrs
 
 
 async def main():
@@ -93,6 +103,7 @@ async def main():
     bracket = config['stats']['bracket']
 
     assets.get_hero_assets('images')
+    ui.init()
 
     # Get meta heroes for each role
     heroes = await queries.run_query(queries.make_hero_info_query(), stratz_token)
@@ -130,8 +141,11 @@ async def main():
         if hero_id in all_meta_heroes:
             meta_matchups[hero_id] = hero
 
+    # Player's hero win rates
+    player_wrs = await get_player_winrates(config['steam']['user'], all_hero_count, stratz_token)
+
     # Run CLI loop
-    cli(config, heroes, pos_heroes, hero_names, meta_matchups)
+    cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
 
 
 if __name__ == '__main__':

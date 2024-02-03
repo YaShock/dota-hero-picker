@@ -100,6 +100,23 @@ def make_hero_winrate_query(pos, bracket):
     '''
 
 
+def make_player_winrates_query(player_id, hero_count):
+    return f'''
+        {{
+          player(steamAccountId: {player_id}) {{
+            matchCount,
+            heroesPerformance(take: {hero_count}, request: {{
+              take: 1000
+            }}) {{
+              heroId,
+              winCount,
+              matchCount
+            }}
+          }}
+        }}
+    '''
+
+
 async def run_query(query, stratz_token):
     connector = aiohttp.TCPConnector(
         family=socket.AF_INET,

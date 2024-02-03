@@ -55,10 +55,9 @@ Windows:
 - [x] Filter heroes for each role (user input)
 - [x] Calculate synergies with each hero and counterpicks against each hero
 - [x] Order from highest to lowest predicted winrate for each role
-- [ ] Option to cache meta heroes and their matchups (if not older than a day)
 - [ ] Detect and filter bans
 - [x] Override meta heroes with custom picks
 - [ ] Winrate prediction for heroes
-- [ ] Show player's WR for suggested heroes
+- [x] Show player's WR for suggested heroes
 - [ ] Detect lane partners
 - [ ] Predict enemy roles

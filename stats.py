@@ -119,3 +119,7 @@ def include_heroes(meta_heroes, include_ids, hero_count, pos_win_rates):
         meta_incl_heroes[pos] = sorted(incl_data, key=lambda x: x[1], reverse=True)
 
     return meta_incl_heroes
+
+
+def get_user_winrates():
+    pass
