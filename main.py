@@ -43,7 +43,7 @@ def get_hero_ids_from_names(config, heroes, hero_count):
     return include_ids
 
 
-def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
+def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs, pos=None):
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
     screenshot_path = config['image']['screenshot']
@@ -60,7 +60,7 @@ def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups,
     print('Detected radiant: ', [hero_names[hero] for hero in radiant_heroes])
     print('Detected dire: ', [hero_names[hero] for hero in dire_heroes])
 
-    best_picks = stats.get_best_pick_by_pos(pos_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant)
+    best_picks = stats.get_best_pick_by_pos(pos_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant, pos)
     ui.print_best_picks(hero_names, best_picks, player_wrs)
 
 
@@ -70,11 +70,17 @@ def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
     while command != 'q':
         print('prompt> ', end='')
         command = input()
-        if command == 'r' or command == 'd':
-            is_radiant = command == 'r'
+        picking = command.startswith('r') or command.startswith('d')
+        if picking and (len(command) == 1 or len(command) == 2):
+            pos = None
+            if len(command) == 2:
+                if command[1] not in set("12345"):
+                    continue
+                pos = [int(command[1])]
+            is_radiant = command[0] == 'r'
             side = 'radiant' if is_radiant else 'dire'
             print(f'Picking for {side}')
-            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
+            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs, pos)
         elif command == 't':
             cfg_im = config['image']
             detection.test_detection(cfg_im['monitor_number'], cfg_im['screenshot'], cfg_im['roi_method'])

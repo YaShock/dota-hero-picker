@@ -67,8 +67,10 @@ def print_best_picks(hero_names, best_by_pos, player_wrs):
         return color + s
 
     for pos in range(0, 5):
-        print(f'POSITION {pos+1}:')
         best = best_by_pos[pos]
+        if len(best) == 0:
+            continue
+        print(f'POSITION {pos+1}:')
         for hero_id, counter, synergy, val in best:
             name = hero_names[hero_id]
             cntr_str = str(round(counter, 2))

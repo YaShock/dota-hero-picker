@@ -35,11 +35,13 @@ def get_best_heroes_by_pos(pos_win_rates, pick_thr=0.05, hero_count=10):
     return poss
 
 
-def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant=True):
+def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant=True, pos=None):
+    if pos is None:
+        pos = [1, 2, 3, 4, 5]
     all_meta_heroes = set()
 
-    for pos in range(0, 5):
-        for hero in meta_heroes[pos]:
+    for p in range(0, 5):
+        for hero in meta_heroes[p]:
             all_meta_heroes.add(hero[0])
 
     against_idx = dire_heroes if is_radiant else radiant_heroes
@@ -73,16 +75,17 @@ def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes,
         best_heroes[hero] = (counter, synergy, val)
 
     best_by_pos = [[], [], [], [], []]
-    for pos in range(0, 5):
-        for hero in meta_heroes[pos]:
+    for p in pos:
+        p -= 1
+        for hero in meta_heroes[p]:
             hero_id = hero[0]
             # Can't pick already picked heroes
             if hero_id in against_idx or hero_id in with_idx:
                 continue
 
             hero_stats = best_heroes[hero_id]
-            best_by_pos[pos].append((hero_id, hero_stats[0], hero_stats[1], hero_stats[2]))
-        best_by_pos[pos] = sorted(best_by_pos[pos], key=lambda x: x[3], reverse=True)
+            best_by_pos[p].append((hero_id, hero_stats[0], hero_stats[1], hero_stats[2]))
+        best_by_pos[p] = sorted(best_by_pos[p], key=lambda x: x[3], reverse=True)
 
     return best_by_pos
 
