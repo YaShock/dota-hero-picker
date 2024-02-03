@@ -64,7 +64,7 @@ def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups)
 
 
 def cli(config, heroes, pos_heroes, hero_names, meta_matchups):
-    print('Type r (radiant), d (dire) to analyze picks, t (test) to test detection, h (heroes) to display hero details, or q (quit) to exist.')
+    print('Type r (radiant), d (dire) to analyze picks, t (test) to test detection, h (heroes) to display hero details, or q (quit) to exit.')
     command = None
     while command != 'q':
         print('prompt> ', end='')
@@ -97,6 +97,7 @@ async def main():
     # Get meta heroes for each role
     heroes = await queries.run_query(queries.make_hero_info_query(), stratz_token)
     hero_names = get_hero_names(heroes)
+    all_hero_count = len(hero_names)
 
     pos_win_rates = []
     for pos in range(0, 5):
@@ -114,7 +115,6 @@ async def main():
     print('Meta + custom picks')
     ui.print_meta_heroes(pos_heroes, hero_names, hero_count)
 
-    print('Getting matchups for each meta hero')
     all_meta_heroes = set()
     for pos in range(0, 5):
         for hero in pos_heroes[pos]:
@@ -124,9 +124,11 @@ async def main():
     if bracket == 'IMMORTAL' or bracket == 'DIVINE':
         bracket_combined = 'DIVINE_IMMORTAL'
     meta_matchups = {}
-    for hero in all_meta_heroes:
-        matchups = await queries.run_query(queries.make_hero_matchup_query(hero, bracket_combined), stratz_token)
-        meta_matchups[hero] = matchups
+    matchups = await queries.run_query(queries.make_all_heroes_matchup_query(bracket_combined, all_hero_count), stratz_token)
+    for hero in matchups['heroStats']['matchUp']:
+        hero_id = hero['heroId']
+        if hero_id in all_meta_heroes:
+            meta_matchups[hero_id] = hero
 
     # Run CLI loop
     cli(config, heroes, pos_heroes, hero_names, meta_matchups)

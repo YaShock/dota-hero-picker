@@ -55,8 +55,8 @@ def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes,
             continue
 
         matchups = meta_matchups[hero]
-        data_cntr = matchups['heroStats']['heroVsHeroMatchup']['advantage'][0]['vs']
-        data_syn = matchups['heroStats']['heroVsHeroMatchup']['advantage'][0]['with']
+        data_cntr = matchups['vs']
+        data_syn = matchups['with']
         
         counter, synergy = 0, 0
 
