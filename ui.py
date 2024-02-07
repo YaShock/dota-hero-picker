@@ -6,49 +6,61 @@ def init():
     colorama_init(autoreset=True)
 
 
-def print_grid(radiant_heroes, dire_heroes, adv_matrix):
-    r_heroes = [hero['name'].removeprefix('npc_dota_hero_') for hero in radiant_heroes]
-    d_heroes = [hero['name'].removeprefix('npc_dota_hero_') for hero in dire_heroes]
-    long_rad_hero = max(r_heroes, key=len)
-    header = ' ' * len(long_rad_hero) + ' '.join(d_heroes)
-    print(header)
-    for row, r_hero in enumerate(r_heroes):
-        print(r_hero, end='')
-        extra_pad = len(long_rad_hero) - len(r_hero)
-        print(' ' * extra_pad, end='')
-        for col, d_hero in enumerate(d_heroes):
-            val = adv_matrix[row][col]
-            val_str = str(round(val, 2)) + '%'
-            s_len = len(val_str)
-            pad_left = (len(d_hero) - s_len) // 2
-            pad_right = len(d_hero) - pad_left - s_len - 2
-            print(' ' * pad_left, val_str, ' ' * pad_right, end='')
+def print_table(data, header_row=None, header_col=None, min_col_width=0, data_format=None, row_first=True, header_col_len=0):
+    if header_row:
+        header = ' '.join([e.ljust(min_col_width) for e in header_row])
+        if header_col:
+            if header_col_len == 0:
+                header_col_len = len(max(header_col, key=len))
+            header = header.rjust(len(header) + header_col_len + 1)
+        print(header)
+
+    range1 = range(len(data)) if row_first else range(len(data[0]))
+    range2 = range(len(data[0])) if row_first else range(len(data))
+
+    for idx1 in range1:
+        if header_col:
+            print(header_col[idx1].ljust(header_col_len + 1), end='')
+
+        for idx2 in range2:
+            val = data[idx1][idx2] if row_first else data[idx2][idx1]
+            if data_format:
+                val = data_format(val)
+            val = str(val).ljust(min_col_width + 1)
+            if header_row:
+                val = val.ljust(len(header_row[idx2]) + 1)
+            print(val, end='')
         print()
+
+
+def print_grids(radiant_heroes, dire_heroes, hero_names, mat_vs, mat_with_rad, mat_with_dire):
+    r_heroes = [hero_names[hero] for hero in radiant_heroes]
+    d_heroes = [hero_names[hero] for hero in dire_heroes]
+
+    def entry_format(val):
+        return str(round(val, 2)) + '%'
+
+    print('Counters')
+    print_table(mat_vs, d_heroes, r_heroes, min_col_width=6, data_format=entry_format)
+    print('Synergy Radiant')
+    print_table(mat_with_rad, r_heroes, r_heroes, min_col_width=6, data_format=entry_format)
+    print('Synergy Dire')
+    print_table(mat_with_dire, d_heroes, d_heroes, min_col_width=6, data_format=entry_format)
 
 
 def print_meta_heroes(meta_pos, hero_names, hero_count=10):
     longest_name = max(hero_names.values(), key=len)
     col_width = len(longest_name) + 5
 
-    # Print header
-    for i in range(0, 5):
-        s = f'Position {i + 1} '
-        pad = col_width - len(s)
-        s += ' ' * pad
-        print(s, end='')
-    print()
+    def entry_format(entry):
+        hero = entry[0]
+        hero_name = hero_names[hero]
+        val = entry[1]
+        val_str = str(round(val * 100, 2)) + '%'
+        return f'{hero_name}: {val_str}'
 
-    for i in range(0, hero_count):
-        for pos in range(0, 5):
-            hero = meta_pos[pos][i][0]
-            hero_name = hero_names[hero]
-            val = meta_pos[pos][i][1]
-            val_str = str(round(val * 100, 2)) + '%'
-            out = f'{hero_name}: {val_str} '
-            pad = col_width - len(out)
-            out += ' ' * pad
-            print(out, end='')
-        print()
+    header = [f'Position {i + 1}' for i in range(0, 5)]
+    print_table(meta_pos, header, min_col_width=col_width, data_format=entry_format, row_first=False)
 
 
 def print_best_picks(hero_names, best_by_pos, player_wrs):

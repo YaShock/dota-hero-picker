@@ -1,18 +1,42 @@
-def calc_adv_matrix(radiant_heroes, dire_heroes, matchups_rad):
-    mat = [[0 for col in range(5)] for row in range(5)]
+def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
+    mat_vs = [[0 for col in range(len(dire_heroes))] for row in range(len(radiant_heroes))]
+    mat_with_rad = [[0 for col in range(len(radiant_heroes))] for row in range(len(radiant_heroes))]
+    mat_with_dire = [[0 for col in range(len(dire_heroes))] for row in range(len(dire_heroes))]
 
+    rad_idx = {}
     dire_idx = {}
-    for idx in range(0, 5):
-        dire_idx[dire_heroes[idx]['id']] = idx
+    for idx in range(0, len(radiant_heroes)):
+        rad_idx[radiant_heroes[idx]] = idx
+    for idx in range(0, len(dire_heroes)):
+        dire_idx[dire_heroes[idx]] = idx
 
-    for rad_idx, matchups in enumerate(matchups_rad):
-        data = matchups['heroStats']['heroVsHeroMatchup']['advantage'][0]['vs']
-        for matchup in data:
-            if matchup['heroId2'] in dire_idx:
-                idx = dire_idx[matchup['heroId2']]
-                mat[rad_idx][idx] = matchup['synergy']
+    for hero in radiant_heroes:
+        matchups = meta_matchups[hero]['vs']
 
-    return mat
+        for matchup in matchups:
+            if matchup['heroId2'] in dire_heroes:
+                idx_1 = rad_idx[matchup['heroId1']]
+                idx_2 = dire_idx[matchup['heroId2']]
+                mat_vs[idx_1][idx_2] = matchup['synergy']
+
+    for hero in radiant_heroes:
+        matchups = meta_matchups[hero]['with']
+        for matchup in matchups:
+            if matchup['heroId2'] in radiant_heroes:
+                idx_1 = rad_idx[matchup['heroId1']]
+                idx_2 = rad_idx[matchup['heroId2']]
+                mat_with_rad[idx_1][idx_2] = matchup['synergy']
+
+    for hero in dire_heroes:
+        matchups = meta_matchups[hero]['with']
+        for matchup in matchups:
+            if matchup['heroId2'] in dire_heroes:
+                idx_1 = dire_idx[matchup['heroId1']]
+                idx_2 = dire_idx[matchup['heroId2']]
+                mat_with_dire[idx_1][idx_2] = matchup['synergy']
+
+
+    return mat_vs, mat_with_rad, mat_with_dire
 
 
 def get_best_heroes_by_pos(pos_win_rates, pick_thr=0.05, hero_count=10):

@@ -43,19 +43,23 @@ def get_hero_ids_from_names(config, heroes, hero_count):
     return include_ids
 
 
+def get_heroes(monitor_number, screenshot_path, roi_method, heroes):
+    img = detection.make_screenshot(monitor_number, screenshot_path)
+    rois = detection.predefined_rois() if roi_method == 'predefined' else detection.get_hero_rois(img)
+
+    detected_heroes = detection.detect_heroes(heroes, img, rois)
+    dire_heroes = [hero for hero in detected_heroes[:5] if hero]
+    radiant_heroes = [hero for hero in detected_heroes[5:] if hero]
+    return radiant_heroes, dire_heroes
+
+
 def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs, pos=None):
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
     screenshot_path = config['image']['screenshot']
     roi_method = config['image']['roi_method']
 
-    # Get screenshot
-    img = detection.make_screenshot(monitor_number, screenshot_path)
-    rois = detection.predefined_rois() if roi_method == 'predefined' else detection.get_hero_rois(img)
-
-    detected_heroes = detection.detect_heroes(heroes, img, rois)
-    dire_heroes = [hero for hero in detected_heroes[:5] if hero]
-    radiant_heroes = [hero for hero in detected_heroes[5:] if hero]            
+    radiant_heroes, dire_heroes = get_heroes(monitor_number, screenshot_path, roi_method, heroes)
 
     print('Detected radiant: ', [hero_names[hero] for hero in radiant_heroes])
     print('Detected dire: ', [hero_names[hero] for hero in dire_heroes])
@@ -64,7 +68,39 @@ def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups,
     ui.print_best_picks(hero_names, best_picks, player_wrs)
 
 
-def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
+async def show_grid(config, heroes, pos_heroes, hero_names, meta_matchups):
+    stratz_token = config['stratz']['token']
+    monitor_number = config['image']['monitor_number']
+    screenshot_path = config['image']['screenshot']
+    roi_method = config['image']['roi_method']
+    bracket = config['stats']['bracket']
+
+    radiant_heroes, dire_heroes = get_heroes(monitor_number, screenshot_path, roi_method, heroes)
+    missing_heroes = []
+    for hero in radiant_heroes + dire_heroes:
+        if hero not in meta_matchups:
+            missing_heroes.append(hero)
+
+    all_hero_count = len(hero_names)
+
+    bracket_combined = bracket
+    if bracket == 'IMMORTAL' or bracket == 'DIVINE':
+        bracket_combined = 'DIVINE_IMMORTAL'
+
+    missing_matchups = {}
+    matchups = await queries.run_query(queries.make_heroes_matchup_query(bracket_combined, missing_heroes, all_hero_count), stratz_token)
+    for hero in matchups['heroStats']['matchUp']:
+        hero_id = hero['heroId']
+        if hero_id in missing_heroes:
+            missing_matchups[hero_id] = hero
+
+    combined_matchups = meta_matchups | missing_matchups
+
+    grid_vs, grid_rad, grid_dire = stats.calc_adv_matrix(radiant_heroes, dire_heroes, combined_matchups)
+    ui.print_grids(radiant_heroes, dire_heroes, hero_names, grid_vs, grid_rad, grid_dire)
+
+
+async def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
     print('Type r (radiant), d (dire) to analyze picks, t (test) to test detection, h (heroes) to display hero details, or q (quit) to exit.')
     command = None
     while command != 'q':
@@ -86,6 +122,8 @@ def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
             detection.test_detection(cfg_im['monitor_number'], cfg_im['screenshot'], cfg_im['roi_method'])
         elif command == 'h':
             ui.print_hero_data(heroes)
+        elif command == 'g':
+            await show_grid(config, heroes, pos_heroes, hero_names, meta_matchups)
 
 
 async def get_player_winrates(player_id, all_hero_count, stratz_token):
@@ -151,7 +189,7 @@ async def main():
     player_wrs = await get_player_winrates(config['steam']['user'], all_hero_count, stratz_token)
 
     # Run CLI loop
-    cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
+    await cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
 
 
 if __name__ == '__main__':

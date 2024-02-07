@@ -59,6 +59,28 @@ def make_hero_matchup_query(hero_id, bracket):
     '''
 
 
+def make_heroes_matchup_query(bracket, heroes, hero_count):
+    return f'''
+        {{
+          heroStats {{
+            matchUp(heroIds: {heroes}, bracketBasicIds: [{bracket}], take: {hero_count}) {{
+              heroId,
+              vs {{
+                heroId1,
+                heroId2,
+                synergy
+              }},
+              with {{
+                heroId1,
+                heroId2,
+                synergy
+              }}
+            }}
+          }}
+        }}
+    '''
+
+
 def make_all_heroes_matchup_query(bracket, hero_count):
     return f'''
         {{

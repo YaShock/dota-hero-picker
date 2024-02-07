@@ -61,3 +61,5 @@ Windows:
 - [x] Show player's WR for suggested heroes
 - [ ] Detect lane partners
 - [ ] Predict enemy roles
+- [x] Detailed hero draft analytics
+- [ ] Item build suggestions
