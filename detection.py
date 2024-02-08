@@ -5,17 +5,20 @@ from matplotlib import pyplot as plt
 
 
 def get_hero_rois(img):
-    # Convert to grayscale
+    """Get ROI polygons of hero portraits from an image during hero pick phase using contours.
+    
+    Args:
+        img (array): An array representing the image (obtained through make_screenshot function)
+    
+    Returns:
+        list[array(int)]: List of ROI polygons, which are arrays of 2D points
+    """
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Blur the image
     blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-    # Detect edges
     edges = cv2.Canny(blurred, 1, 15)
 
     # Close gaps
-    # Defining the kernel
     kernel = np.ones((5, 5), np.uint8)
-    # Apply the closing morphological operation using cv2.morphologyEx() function
     img_closing = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
     edges = img_closing
 
@@ -50,6 +53,12 @@ def get_hero_rois(img):
 
 
 def predefined_rois():
+    """Get ROI polygons of hero portraits using predefined coordinates based on full HD resolution.
+    This is a temporary working solution until contour based solution (or a new method) is fixed.
+    
+    Returns:
+        list[array(int)]: List of ROI polygons, which are arrays of 2D points
+    """
     rois = []
     roi_1 = np.array([[[1600,0],[1589,75],[1703,75],[1715,0]]])
     rois.append(roi_1)
@@ -72,7 +81,20 @@ def predefined_rois():
     return rois
 
 
-def detect_heroes(heroes, img, rois):
+def detect_heroes(heroes, img, rois, path_images):
+    """Returns a list of heroes from an image given hero portrait positions. Each portrait is compared to the images of hero in the given folder.
+    The image comparison is done using OpenCV's Brute-Force matcher of SIFT features.
+    
+    Args:
+        heroes (json): JSON object containing constant data of each hero (obtained through queries.make_hero_info_query function)
+        img (array): An array representing the image (obtained through make_screenshot function)
+        rois (list[array(int)]): List of ROI polygons for coordinates of heroes' portraits
+        path_images (str): Path to the folder containing images of heroes
+
+    
+    Returns:
+        list[int]: List of detected heroes' IDs
+    """
     hero_names = {}
     for hero in heroes['constants']['heroes']:
         hero_names[hero['id']] = hero['shortName']
@@ -84,7 +106,7 @@ def detect_heroes(heroes, img, rois):
 
     for hero in heroes['constants']['heroes']:
         hero_name = hero['shortName']
-        filename = 'images/' + hero_name + '.png'
+        filename = path_images + '/' + hero_name + '.png'
         img_hero = cv2.imread(filename)
         kp, des = sift.detectAndCompute(img_hero, None)
         hero_des[hero['id']] = des
@@ -122,6 +144,15 @@ def detect_heroes(heroes, img, rois):
 
 
 def make_screenshot(monitor_number, path):
+    """Creates an image either from making a snapshot of the monitor or loading from file.
+    
+    Args:
+        monitor_number (int): Number of the monitor to get screenshot of (only used when path is "live")
+        path (str): Either "live" to capture the screen or a path to the image to load from file
+    
+    Returns:
+        array: An array representing the image
+    """
     if path != 'live':
         img = cv2.imread(path)
         return img
@@ -133,6 +164,13 @@ def make_screenshot(monitor_number, path):
 
 
 def test_detection(monitor_number, screenshot_path, roi_method):
+    """Creates an OpenCV window containing the image. Used for debugging.
+    
+    Args:
+        monitor_number (int): Number of the monitor to get screenshot of (only used when screenshot_path is "live")
+        screenshot_path (str): Either "live" to capture the screen or a path to the image to load from file
+        roi_method (str): The method to detect ROIs, has to be either "predefined" or "contour"
+    """
     # Get screenshot
     img = make_screenshot(monitor_number, screenshot_path)
     rois = predefined_rois() if roi_method == 'predefined' else get_hero_rois(img)

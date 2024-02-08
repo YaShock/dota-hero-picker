@@ -12,6 +12,14 @@ from misc import Error
 
 
 def get_hero_names(heroes):
+    """Assigns a name string to each hero ID
+    
+    Args:
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+    
+    Returns:
+        dict{int: str}: Dictionary of names for each hero ID
+    """
     SHORTER_NAMES = {
         'Outworld Destroyer': 'Outworld D',
         'Ancient Apparition': 'Ancient A',
@@ -29,6 +37,16 @@ def get_hero_names(heroes):
 
 
 def get_hero_ids_from_names(config, heroes, hero_count):
+    """Extracts the IDs of heroes for each position from the config file's include_heroes attribute.
+    
+    Args:
+        config (json): Loaded user specific config file
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+        hero_count (int): Number of meta heroes for each position
+    
+    Returns:
+        list[list[int]]: List of hero IDs for each position
+    """
     include_ids = [[], [], [], [], []]
     for pos in range(0, 5):
         incl = config['stats']['include_heroes'][f'pos_{pos + 1}']
@@ -44,17 +62,39 @@ def get_hero_ids_from_names(config, heroes, hero_count):
 
 
 def get_heroes(monitor_number, screenshot_path, roi_method, heroes):
+    """Gets heroes from either a file image or screenshot.
+    
+    Args:
+        monitor_number (int): Number of the monitor to get screenshot of (only used when screenshot_path is "live")
+        screenshot_path (str): Either "live" to capture the screen or a path to the image to load from file
+        roi_method (str): The method to detect ROIs, has to be either "predefined" or "contour"
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+    
+    Returns:
+        tuple(list[int], list[int]): List of hero IDs for radiant and dire team
+    """
     img = detection.make_screenshot(monitor_number, screenshot_path)
     rois = detection.predefined_rois() if roi_method == 'predefined' else detection.get_hero_rois(img)
 
-    detected_heroes = detection.detect_heroes(heroes, img, rois)
+    detected_heroes = detection.detect_heroes(heroes, img, rois, 'images')
     dire_heroes = [hero for hero in detected_heroes[:5] if hero]
     radiant_heroes = [hero for hero in detected_heroes[5:] if hero]
     return radiant_heroes, dire_heroes
 
 
-def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs, pos=None):
-    stratz_token = config['stratz']['token']
+def get_picks(config, is_radiant, heroes, meta_heroes, hero_names, hero_matchups, player_wrs, pos=None):
+    """Displays the best heroes for the given team.
+    
+    Args:
+        config (json): Loaded user specific config file
+        is_radiant (bool): Determines if picking for radiant side
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+        meta_heroes (list[list[tuple(int, float)]]): List of best heroes (their ID and win rate) for each position
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        hero_matchups (dict{int: json}): Match up data for each hero ID (obtained through queries.make_heroes_matchup_query)
+        player_wrs (json): Object containing player's win rates for each hero (obtained through queries.get_player_winrates function)
+        pos (list[int], optional): List of positions to consider, by default includes all positions (1-5)
+    """
     monitor_number = config['image']['monitor_number']
     screenshot_path = config['image']['screenshot']
     roi_method = config['image']['roi_method']
@@ -64,11 +104,49 @@ def get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups,
     print('Detected radiant: ', [hero_names[hero] for hero in radiant_heroes])
     print('Detected dire: ', [hero_names[hero] for hero in dire_heroes])
 
-    best_picks = stats.get_best_pick_by_pos(pos_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant, pos)
+    against_idx = dire_heroes if is_radiant else radiant_heroes
+    with_idx = radiant_heroes if is_radiant else dire_heroes
+
+    print("WITH: " + ', '.join([hero_names[hero] for hero in with_idx]))
+    print("AGAINST: " + ', '.join([hero_names[hero] for hero in against_idx]))
+
+    best_picks = stats.get_best_pick_by_pos(meta_heroes, hero_matchups, radiant_heroes, dire_heroes, is_radiant, pos)
     ui.print_best_picks(hero_names, best_picks, player_wrs)
 
 
-async def show_grid(config, heroes, pos_heroes, hero_names, meta_matchups):
+async def get_hero_matchups(bracket, all_hero_count, stratz_token):
+    """Gets the counters and synergy values for each hero
+    
+    Args:
+        bracket (str): Selected bracket from the config
+        all_hero_count (int): The number of all heroes
+        stratz_token (TYPE): Player's Stratz API token
+    
+    Returns:
+        dict{int: json}: Match up data for each hero ID
+    """
+    bracket_combined = bracket
+    if bracket == 'IMMORTAL' or bracket == 'DIVINE':
+        bracket_combined = 'DIVINE_IMMORTAL'
+    hero_matchups = {}
+
+    matchups = await queries.run_query(queries.make_heroes_matchup_query(bracket_combined, all_hero_count), stratz_token)
+    for hero in matchups['heroStats']['matchUp']:
+        hero_id = hero['heroId']
+        hero_matchups[hero_id] = hero
+
+    return hero_matchups
+
+
+def show_grid(config, heroes, hero_names, hero_matchups):
+    """Displays the tables of every hero counters and synergies for both teams.
+    
+    Args:
+        config (json): Loaded user specific config file
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        hero_matchups (dict{int: json}): Match up data for each hero ID (obtained through queries.make_heroes_matchup_query)
+    """
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
     screenshot_path = config['image']['screenshot']
@@ -76,32 +154,32 @@ async def show_grid(config, heroes, pos_heroes, hero_names, meta_matchups):
     bracket = config['stats']['bracket']
 
     radiant_heroes, dire_heroes = get_heroes(monitor_number, screenshot_path, roi_method, heroes)
-    missing_heroes = []
-    for hero in radiant_heroes + dire_heroes:
-        if hero not in meta_matchups:
-            missing_heroes.append(hero)
 
-    all_hero_count = len(hero_names)
-
-    bracket_combined = bracket
-    if bracket == 'IMMORTAL' or bracket == 'DIVINE':
-        bracket_combined = 'DIVINE_IMMORTAL'
-
-    missing_matchups = {}
-    matchups = await queries.run_query(queries.make_heroes_matchup_query(bracket_combined, missing_heroes, all_hero_count), stratz_token)
-    for hero in matchups['heroStats']['matchUp']:
-        hero_id = hero['heroId']
-        if hero_id in missing_heroes:
-            missing_matchups[hero_id] = hero
-
-    combined_matchups = meta_matchups | missing_matchups
-
-    grid_vs, grid_rad, grid_dire = stats.calc_adv_matrix(radiant_heroes, dire_heroes, combined_matchups)
+    grid_vs, grid_rad, grid_dire = stats.calc_adv_matrix(radiant_heroes, dire_heroes, hero_matchups)
     ui.print_grids(radiant_heroes, dire_heroes, hero_names, grid_vs, grid_rad, grid_dire)
 
 
-async def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs):
-    print('Type r (radiant), d (dire) to analyze picks, t (test) to test detection, h (heroes) to display hero details, or q (quit) to exit.')
+def cli(config, heroes, pos_heroes, hero_names, hero_matchups, player_wrs):
+    """Runs the command-line interface loop that awaits user's input and executes the given command.
+    
+    Args:
+        config (json): Loaded user specific config file
+        heroes (json): Hero information obtained through queries.make_hero_info_query
+        pos_heroes (list[list[tuple(int, float)]]): List of best heroes (their ID and win rate) for each position
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        hero_matchups (dict{int: json}): Match up data for each hero ID (obtained through queries.make_heroes_matchup_query)
+        player_wrs (json): Object containing player's win rates for each hero (obtained through queries.get_player_winrates function)
+    """
+    print('Type a command.')
+    cmds = ['r (radiant)[pos]: analyze picks for radiant (optinally for given position, e.g. r2)',
+        'd (dire)[pos]: analyze picks for dire (optinally for given position, e.g. d2)',
+        't (test): test hero detection',
+        'h (heroes): display hero details',
+        'g (grid): detailed hero matchups',
+        'q (quit): exit']
+    for cmd in cmds:
+        print(f'\t{cmd}')
+
     command = None
     while command != 'q':
         print('prompt> ', end='')
@@ -116,17 +194,27 @@ async def cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
             is_radiant = command[0] == 'r'
             side = 'radiant' if is_radiant else 'dire'
             print(f'Picking for {side}')
-            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, meta_matchups, player_wrs, pos)
+            get_picks(config, is_radiant, heroes, pos_heroes, hero_names, hero_matchups, player_wrs, pos)
         elif command == 't':
             cfg_im = config['image']
             detection.test_detection(cfg_im['monitor_number'], cfg_im['screenshot'], cfg_im['roi_method'])
         elif command == 'h':
             ui.print_hero_data(heroes)
         elif command == 'g':
-            await show_grid(config, heroes, pos_heroes, hero_names, meta_matchups)
+            show_grid(config, heroes, hero_names, hero_matchups)
 
 
 async def get_player_winrates(player_id, all_hero_count, stratz_token):
+    """Gets player's win rate for each hero.
+    
+    Args:
+        player_id (long): Player's Steam ID from config
+        all_hero_count (int): The number of all heroes
+        stratz_token (str): Player's Stratz token
+    
+    Returns:
+        dict{int: json}: A JSON object describing winrate for each hero ID
+    """
     wrs = {}
     if player_id != None:
         data = await queries.run_query(queries.make_player_winrates_query(player_id, all_hero_count), stratz_token)
@@ -170,26 +258,13 @@ async def main():
     print('Meta + custom picks')
     ui.print_meta_heroes(pos_heroes, hero_names, hero_count)
 
-    all_meta_heroes = set()
-    for pos in range(0, 5):
-        for hero in pos_heroes[pos]:
-            all_meta_heroes.add(hero[0])
-
-    bracket_combined = bracket
-    if bracket == 'IMMORTAL' or bracket == 'DIVINE':
-        bracket_combined = 'DIVINE_IMMORTAL'
-    meta_matchups = {}
-    matchups = await queries.run_query(queries.make_all_heroes_matchup_query(bracket_combined, all_hero_count), stratz_token)
-    for hero in matchups['heroStats']['matchUp']:
-        hero_id = hero['heroId']
-        if hero_id in all_meta_heroes:
-            meta_matchups[hero_id] = hero
+    matchups = await get_hero_matchups(bracket, all_hero_count, stratz_token)
 
     # Player's hero win rates
     player_wrs = await get_player_winrates(config['steam']['user'], all_hero_count, stratz_token)
 
     # Run CLI loop
-    await cli(config, heroes, pos_heroes, hero_names, meta_matchups, player_wrs)
+    cli(config, heroes, pos_heroes, hero_names, matchups, player_wrs)
 
 
 if __name__ == '__main__':

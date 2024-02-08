@@ -8,6 +8,11 @@ OPENDOTA_API = 'https://api.opendota.com/api'
 
 
 def get_hero_assets(folder):
+    """Downloads the portraits of each hero to the given folder if it doesn't exist. The images are queried using OpenDota's API.
+    
+    Args:
+        folder (str): Path to the hero images folder
+    """
     if os.path.exists(folder):
         return
     os.makedirs(folder)

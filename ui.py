@@ -3,10 +3,23 @@ from colorama import Fore, Style
 
 
 def init():
+    """Initiates colorama for the colorful console printing.
+    """
     colorama_init(autoreset=True)
 
 
 def print_table(data, header_row=None, header_col=None, min_col_width=0, data_format=None, row_first=True, header_col_len=0):
+    """Print 2D data in a table format, optionally with row and column headers.
+    
+    Args:
+        data (list[list[Any]]): The 2D data to be printed
+        header_row (list[str], optional): Horizontal header
+        header_col (list[str], optional): Vertical header
+        min_col_width (int, optional): Minimum number of characters for each column (using spaces for padding)
+        data_format (function, optional): A function(str) -> str that formats each entry for output
+        row_first (bool, optional): Donates if data is structured in row-first format
+        header_col_len (int, optional): Pads the first (header) column to the given length if set to non 0
+    """
     if header_row:
         header = ' '.join([e.ljust(min_col_width) for e in header_row])
         if header_col:
@@ -34,6 +47,16 @@ def print_table(data, header_row=None, header_col=None, min_col_width=0, data_fo
 
 
 def print_grids(radiant_heroes, dire_heroes, hero_names, mat_vs, mat_with_rad, mat_with_dire):
+    """Prints the tables of every hero counters and synergies for both teams.
+    
+    Args:
+        radiant_heroes (list[int]): List of hero indexes for radiant
+        dire_heroes (list[int]): List of hero indexes for dire
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        mat_vs (list[list[float]]): 2D list of counter value of each radiant hero against each dire hero
+        mat_with_rad (list[list[float]]): 2D list of synergy value of each radiant hero with other radiant heroes
+        mat_with_dire (list[list[float]]): 2D list of synergy value of each dire hero with other dire heroes
+    """
     r_heroes = [hero_names[hero] for hero in radiant_heroes]
     d_heroes = [hero_names[hero] for hero in dire_heroes]
 
@@ -49,6 +72,13 @@ def print_grids(radiant_heroes, dire_heroes, hero_names, mat_vs, mat_with_rad, m
 
 
 def print_meta_heroes(meta_pos, hero_names, hero_count=10):
+    """Prints best meta heroes and their win rates for each position.
+    
+    Args:
+        meta_pos (list[list[tuple(int, float)]]): List of heroes for each position containing their ID and win rate
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        hero_count (int, optional): The number of meta heroes to be printed for each position
+    """
     longest_name = max(hero_names.values(), key=len)
     col_width = len(longest_name) + 5
 
@@ -64,6 +94,14 @@ def print_meta_heroes(meta_pos, hero_names, hero_count=10):
 
 
 def print_best_picks(hero_names, best_by_pos, player_wrs):
+    """Prints the aggregate value and player's win rate for best hero picks for each position.
+    The hero data consist of hero ID, average counter value, average synergy value and the averaged value of previous metrics.
+    
+    Args:
+        hero_names (dict{int: str}): Dictionary of hero names for hero indexes
+        best_by_pos (list[list[tuple]]): List of hero aggregate values (id, avg counter, avg synergy, combined avg) for each position
+        player_wrs (json): Object containing player's win rates for each hero (obtained through queries.get_player_winrates function)
+    """
     column_lengths = [0, len('counter'), len('synergy'), len('value'), len('player')]
     longest_name = max(hero_names.values(), key=len)
     column_lengths[0] = len(longest_name)
@@ -114,6 +152,11 @@ def print_best_picks(hero_names, best_by_pos, player_wrs):
 
 
 def print_hero_data(heroes):
+    """Prints the json containing information on each hero. Used to find the IDs of heroes.
+    
+    Args:
+        heroes (json): Information on heroes (obtained through queries.make_hero_info_query)
+    """
     import json
     formatted = json.dumps(heroes, indent=2)
     print(formatted)

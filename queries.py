@@ -4,6 +4,11 @@ from misc import Error
 
 
 def make_hero_info_query():
+    """Creates a query string for hero information (their ID and 3 different types of name).
+    
+    Returns:
+        str: query string
+    """
     return f'''
         {{
           constants {{
@@ -19,6 +24,14 @@ def make_hero_info_query():
 
 
 def make_match_query(matchid):
+    """Creates a query string for match information (its ID, each players' team and hero).
+    
+    Args:
+        matchid (long): ID of the match queried
+    
+    Returns:
+        str: query string
+    """
     return f'''
         {{
           match(id: {matchid}) {{
@@ -35,53 +48,16 @@ def make_match_query(matchid):
     '''
 
 
-def make_hero_matchup_query(hero_id, bracket):
-    return f'''
-        {{
-          heroStats {{
-            heroVsHeroMatchup(heroId: {hero_id}, bracketBasicIds: [{bracket}]) {{
-              advantage {{
-                heroId,
-                vs {{
-                  heroId1,
-                  heroId2,
-                  synergy
-                }},
-                with {{
-                  heroId1,
-                  heroId2,
-                  synergy
-                }}
-              }}
-            }}
-          }}
-        }}
-    '''
-
-
-def make_heroes_matchup_query(bracket, heroes, hero_count):
-    return f'''
-        {{
-          heroStats {{
-            matchUp(heroIds: {heroes}, bracketBasicIds: [{bracket}], take: {hero_count}) {{
-              heroId,
-              vs {{
-                heroId1,
-                heroId2,
-                synergy
-              }},
-              with {{
-                heroId1,
-                heroId2,
-                synergy
-              }}
-            }}
-          }}
-        }}
-    '''
-
-
-def make_all_heroes_matchup_query(bracket, hero_count):
+def make_heroes_matchup_query(bracket, hero_count):
+    """Creates a query string for counters and synergy values for each hero.
+    
+    Args:
+        bracket (str): Bracket to query (from HERALD to combined DIVINE_IMMORTAL)
+        hero_count (int): The number of hero matchups (counter and synergy each) for each hero
+    
+    Returns:
+        str: query string
+    """
     return f'''
         {{
           heroStats {{
@@ -104,6 +80,15 @@ def make_all_heroes_matchup_query(bracket, hero_count):
 
 
 def make_hero_winrate_query(pos, bracket):
+    """Creates a query string for hero winrates of a given position.
+    
+    Args:
+        pos (int): The position for hero winrates (from 1 to 5)
+        bracket (str): Bracket to query (from HERALD to IMMORTAL)
+    
+    Returns:
+        str: query string
+    """
     return f'''
         {{
             heroStats {{
@@ -123,6 +108,15 @@ def make_hero_winrate_query(pos, bracket):
 
 
 def make_player_winrates_query(player_id, hero_count):
+    """Creates a query string for all heroes of a given player.
+    
+    Args:
+        player_id (long): Player's Steam ID
+        hero_count (int): The number of heroes queried
+    
+    Returns:
+        str: query string
+    """
     return f'''
         {{
           player(steamAccountId: {player_id}) {{
@@ -140,6 +134,18 @@ def make_player_winrates_query(player_id, hero_count):
 
 
 async def run_query(query, stratz_token):
+    """Creates connection to the Stratz's GraphQL API and executed the given query string.
+    
+    Args:
+        query (str): Query string passed to GraphQL API
+        stratz_token (str): Player's Stratz token
+    
+    Returns:
+        json: Data of the query result
+    
+    Raises:
+        Error: Error indicating failure to connect to the GraphQL API or erroneous query string
+    """
     connector = aiohttp.TCPConnector(
         family=socket.AF_INET,
         ssl=False,

@@ -1,4 +1,14 @@
-def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
+def calc_adv_matrix(radiant_heroes, dire_heroes, hero_matchups):
+    """Creates matrices for each radiant hero's counter value against each hero on dire, and synergy matrices between heroes on each team.
+    
+    Args:
+        radiant_heroes (list[int]): List of hero indexes for radiant
+        dire_heroes (list[int]): List of hero indexes for dire
+        hero_matchups (dict{int: json}): Match up data for each hero ID (obtained through queries.make_heroes_matchup_query)
+    
+    Returns:
+        tuple(list, list, list): 3 matrices (counters, synergy for radiant, synergy for dire)
+    """
     mat_vs = [[0 for col in range(len(dire_heroes))] for row in range(len(radiant_heroes))]
     mat_with_rad = [[0 for col in range(len(radiant_heroes))] for row in range(len(radiant_heroes))]
     mat_with_dire = [[0 for col in range(len(dire_heroes))] for row in range(len(dire_heroes))]
@@ -11,7 +21,7 @@ def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
         dire_idx[dire_heroes[idx]] = idx
 
     for hero in radiant_heroes:
-        matchups = meta_matchups[hero]['vs']
+        matchups = hero_matchups[hero]['vs']
 
         for matchup in matchups:
             if matchup['heroId2'] in dire_heroes:
@@ -20,7 +30,7 @@ def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
                 mat_vs[idx_1][idx_2] = matchup['synergy']
 
     for hero in radiant_heroes:
-        matchups = meta_matchups[hero]['with']
+        matchups = hero_matchups[hero]['with']
         for matchup in matchups:
             if matchup['heroId2'] in radiant_heroes:
                 idx_1 = rad_idx[matchup['heroId1']]
@@ -28,7 +38,7 @@ def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
                 mat_with_rad[idx_1][idx_2] = matchup['synergy']
 
     for hero in dire_heroes:
-        matchups = meta_matchups[hero]['with']
+        matchups = hero_matchups[hero]['with']
         for matchup in matchups:
             if matchup['heroId2'] in dire_heroes:
                 idx_1 = dire_idx[matchup['heroId1']]
@@ -40,6 +50,16 @@ def calc_adv_matrix(radiant_heroes, dire_heroes, meta_matchups):
 
 
 def get_best_heroes_by_pos(pos_win_rates, pick_thr=0.05, hero_count=10):
+    """Returns the meta heroes for each given position based on their win rate. Meta is determined by the hero's pick rate for a given position.
+    
+    Args:
+        pos_win_rates (list[json]): List of heroes' win rate for each position (obtained through queries.make_hero_winrate_query)
+        pick_thr (float, optional): The pick rate threshold for including heroes in a given position
+        hero_count (int, optional): The number of heroes for each position returned
+    
+    Returns:
+        list[list[tuple(int, float)]]: List of IDs and win rates of best heroes for each position
+    """
     poss = [[], [], [], [], []]
 
     for pos in range(0, 5):
@@ -59,7 +79,20 @@ def get_best_heroes_by_pos(pos_win_rates, pick_thr=0.05, hero_count=10):
     return poss
 
 
-def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes, dire_heroes, stratz_token, is_radiant=True, pos=None):
+def get_best_pick_by_pos(meta_heroes, hero_matchups, radiant_heroes, dire_heroes, is_radiant=True, pos=None):
+    """Determines the best heroes based on overall best meta heroes and the picked heroes the given team.
+    
+    Args:
+        meta_heroes (list[list[tuple(int, float)]]): List of best heroes (their ID and win rate) for each position
+        hero_matchups (dict{int: json}): Match up data for each hero ID (obtained through queries.make_heroes_matchup_query)
+        radiant_heroes (list[int]): List of hero indexes for radiant
+        dire_heroes (list[int]): List of hero indexes for dire
+        is_radiant (bool, optional): Determines if picking for radiant side
+        pos (list[int], optional): List of positions to consider, by default includes all positions (1-5)
+    
+    Returns:
+        list[list[tuple(int, float, float, float)]]: ID, avg counter, avg synergy, averaged value for each hero for each position
+    """
     if pos is None:
         pos = [1, 2, 3, 4, 5]
     all_meta_heroes = set()
@@ -71,16 +104,13 @@ def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes,
     against_idx = dire_heroes if is_radiant else radiant_heroes
     with_idx = radiant_heroes if is_radiant else dire_heroes
 
-    print("WITH: " + ', '.join([hero_names[hero] for hero in with_idx]))
-    print("AGAINST: " + ', '.join([hero_names[hero] for hero in against_idx]))
-
     best_heroes = {}
     for hero in all_meta_heroes:
         # Can't pick already picked heroes
         if hero in against_idx or hero in with_idx:
             continue
 
-        matchups = meta_matchups[hero]
+        matchups = hero_matchups[hero]
         data_cntr = matchups['vs']
         data_syn = matchups['with']
         
@@ -114,11 +144,18 @@ def get_best_pick_by_pos(meta_heroes, hero_names, meta_matchups, radiant_heroes,
     return best_by_pos
 
 
-# meta_heroes has to be sorted before and after
-# include_ids: list of hero ids to be included
-# pos_win_rates: list of list of tuples (hero id, match count, win count) for each position
-# meta_heroes: best heroes for each position, list of lists of tuples (id, winrate)
 def include_heroes(meta_heroes, include_ids, hero_count, pos_win_rates):
+    """Adds selected heroes to the current best meta heroes.
+    
+    Args:
+        meta_heroes (list[list[tuple(int, float)]]): Best meta heroes obtained from get_best_heroes_by_pos
+        include_ids (list[list[int]]): IDs of heroes to be included for each position
+        hero_count (int): Number of meta heroes for each position
+        pos_win_rates (list[json]): List of heroes' win rate for each position (obtained through queries.make_hero_winrate_query)
+    
+    Returns:
+        list[list[tuple(int, float)]]: Updated and resorted list of heroes that include given heroes
+    """
     meta_incl_heroes = meta_heroes[:]
 
     # Replace lowest winrate heroes with custom picks and sort again
@@ -146,7 +183,3 @@ def include_heroes(meta_heroes, include_ids, hero_count, pos_win_rates):
         meta_incl_heroes[pos] = sorted(incl_data, key=lambda x: x[1], reverse=True)
 
     return meta_incl_heroes
-
-
-def get_user_winrates():
-    pass
