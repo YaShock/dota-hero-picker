@@ -169,16 +169,16 @@ def include_heroes(meta_heroes, include_ids, hero_count, pos_win_rates):
                 wr = hero['winCount'] / hero['matchCount']
                 incl_data.append((hero['heroId'], wr))
 
-        # fill the rest with meta heroes if they are not already in there
+        # Fill the rest with meta heroes if they are not already in there
         incl_count = len(incl_data)
-        meta_i = hero_count - 1
+        meta_i = 0
 
         while incl_count < hero_count:
             hero_id, wr = meta_heroes[pos][meta_i]
             if hero_id not in incl_slice:
                 incl_data.append((hero_id, wr))
                 incl_count += 1
-            meta_i -= 1
+            meta_i += 1
 
         meta_incl_heroes[pos] = sorted(incl_data, key=lambda x: x[1], reverse=True)
 
