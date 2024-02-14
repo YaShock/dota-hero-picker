@@ -1,6 +1,7 @@
 import requests
 import os
 import urllib.request
+from pathlib import Path
 
 
 OPENDOTA_CDN = 'https://cdn.cloudflare.steamstatic.com'
@@ -23,5 +24,5 @@ def get_hero_assets(folder):
         img_uri = ''.join([OPENDOTA_CDN, hero_details['img']])
         print(f'{hero_details['id']} {hero_details['name']} {img_uri}')
         hero_name = hero_details['name'].removeprefix('npc_dota_hero_')
-        file_name = '/'.join([folder, hero_name + '.png'])
+        file_name = Path(folder, hero_name + '.png')
         urllib.request.urlretrieve(img_uri, file_name)

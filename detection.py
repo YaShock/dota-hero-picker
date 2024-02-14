@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 from mss import mss
 from matplotlib import pyplot as plt
+from pathlib import Path
 
 
 def get_hero_rois(img):
@@ -106,8 +107,8 @@ def detect_heroes(heroes, img, rois, path_images):
 
     for hero in heroes['constants']['heroes']:
         hero_name = hero['shortName']
-        filename = path_images + '/' + hero_name + '.png'
-        img_hero = cv2.imread(filename)
+        filename = Path(path_images, hero_name + '.png')
+        img_hero = cv2.imread(str(filename))
         kp, des = sift.detectAndCompute(img_hero, None)
         hero_des[hero['id']] = des
 

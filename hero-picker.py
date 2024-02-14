@@ -9,6 +9,7 @@ import assets
 import stats
 import detection
 from misc import Error
+from pathlib import Path
 
 
 def get_hero_names(heroes):
@@ -73,10 +74,14 @@ def get_heroes(monitor_number, screenshot_path, roi_method, heroes):
     Returns:
         tuple(list[int], list[int]): List of hero IDs for radiant and dire team
     """
+    if screenshot_path != 'live':
+        screenshot_path = str(Path(Path(__file__).parent, screenshot_path))
+    images_path = Path(__file__).resolve().with_name('images')
+
     img = detection.make_screenshot(monitor_number, screenshot_path)
     rois = detection.predefined_rois() if roi_method == 'predefined' else detection.get_hero_rois(img)
 
-    detected_heroes = detection.detect_heroes(heroes, img, rois, 'images')
+    detected_heroes = detection.detect_heroes(heroes, img, rois, images_path)
     dire_heroes = [hero for hero in detected_heroes[:5] if hero]
     radiant_heroes = [hero for hero in detected_heroes[5:] if hero]
     return radiant_heroes, dire_heroes
@@ -197,7 +202,10 @@ def cli(config, heroes, pos_heroes, hero_names, hero_matchups, player_wrs):
             get_picks(config, is_radiant, heroes, pos_heroes, hero_names, hero_matchups, player_wrs, pos)
         elif command == 't':
             cfg_im = config['image']
-            detection.test_detection(cfg_im['monitor_number'], cfg_im['screenshot'], cfg_im['roi_method'])
+            screenshot_path = cfg_im['screenshot']
+            if screenshot_path != 'live':
+                screenshot_path = str(Path(Path(__file__).parent, screenshot_path))
+            detection.test_detection(cfg_im['monitor_number'], screenshot_path, cfg_im['roi_method'])
         elif command == 'h':
             ui.print_hero_data(heroes)
         elif command == 'g':
@@ -225,7 +233,8 @@ async def get_player_winrates(player_id, all_hero_count, stratz_token):
 
 async def main():
     # Load config and hero assets
-    with open('config.json', 'r', encoding='utf-8') as fp:
+    path_config = Path(__file__).resolve().with_name('config.json')
+    with open(path_config, 'r', encoding='utf-8') as fp:
         config = json.load(fp)
     stratz_token = config['stratz']['token']
     monitor_number = config['image']['monitor_number']
@@ -234,7 +243,8 @@ async def main():
     pick_thr = config['stats']['pickrate_threshold']
     bracket = config['stats']['bracket']
 
-    assets.get_hero_assets('images')
+    path_images = Path(__file__).resolve().with_name('images')
+    assets.get_hero_assets(path_images)
     ui.init()
 
     # Get meta heroes for each role
